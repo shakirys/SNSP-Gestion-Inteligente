@@ -1,4 +1,4 @@
-# SNSP Gestión Inteligente · V2.0
+# SNSP Gestión Inteligente · V2.1
 
 Plataforma de gestión de proyectos, actividades, acuerdos y calendario para el área de
 Inteligencia e Información del SNSP, Querétaro.
@@ -36,10 +36,11 @@ js/app.js               Navegación, eventos, búsqueda global, inicio
 
 | Colección   | Campos V1 (sin cambios)                                   | Campos nuevos opcionales                 |
 |-------------|-----------------------------------------------------------|------------------------------------------|
-| projects    | id, name, goal, owner, target, progress                   | start, priority, status, area            |
+| projects    | id, name, goal, owner, target, progress                   | start, priority, status, area, ownerId   |
 | tasks       | id, name, project, owner, due, status, evidence, detail   | priority, doneAt, area, created          |
 | agreements  | id, name, context, owner, due, status                     | meetingDate, project, notes, area        |
 | events      | —                                                         | reuniones del calendario (nuevo)         |
+| people      | —                                                         | catálogo de responsables: id, name, role, kind (person/team) |
 | log         | —                                                         | historial de cambios (nuevo)             |
 | meta        | —                                                         | schemaVersion, area, created, updated    |
 
@@ -53,3 +54,16 @@ js/app.js               Navegación, eventos, búsqueda global, inicio
 - **Metas e indicadores PAT, evidencias, reportes por área**: agregar una colección en
   `store.js`, una vista en `js/views/` y una entrada en `SNSP.nav`.
 - **Servidor o base de datos**: solo cambian `load()` y `save()` en `store.js`.
+
+## Cambios V2.1 · Responsables de proyecto
+
+- Catálogo de responsables con tres registros iniciales: Mtro. Luis Iván Borja González
+  (Líder de Inteligencia e Información), Ing. Soraya Lizbeth Sánchez Torres (Enlace de Análisis
+  y Estadística) y Equipo de Inteligencia e Información (responsable colectivo).
+- En *Nuevo proyecto* y *Editar proyecto*, el campo Responsable es una lista con la opción
+  **+ Nuevo responsable** (nombre completo obligatorio, cargo opcional, marca de equipo).
+- No se registran duplicados: la comparación ignora mayúsculas, acentos y espacios.
+- Los responsables que ya tenían los proyectos se agregan solos al catálogo al abrir la
+  aplicación, así que se conservan al editar.
+- `project.owner` sigue guardando el nombre (compatible con la V1 y los CSV); `ownerId` liga al catálogo.
+- Tarjetas, tabla, reporte por proyecto y CSV de proyectos muestran el cargo del responsable.
