@@ -655,3 +655,16 @@ button.stat:hover { border-color: var(--verde-700); }
 .view-reports .stats-row { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 @media (max-width: 1320px) { .view-reports .stats-row { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .view-reports .stats-row, .view-agreements .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Responsable del proyecto: catálogo y alta rápida */
+.owner-name { display: block; }
+.owner-role { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; margin-top: 1px; }
+.owner-hint:empty { display: none; }
+.newperson { margin-top: 8px; border: 1px solid #D7E3DF; background: #F3F8F6; border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; animation: pop .15s ease-out; }
+.np-title { display: flex; gap: 8px; align-items: center; font: 600 13px var(--font-display); color: var(--verde-900); }
+.np-title .ic { width: 16px; height: 16px; color: var(--verde-700); }
+.np-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px 12px; }
+.np-team { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.np-team input { width: 16px; height: 16px; accent-color: var(--verde-700); }
+.np-actions { display: flex; justify-content: flex-end; gap: 8px; }
+@media screen and (max-width: 640px) { .np-grid { grid-template-columns: 1fr; } }

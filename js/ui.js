@@ -40,6 +40,7 @@
     const req = f.required ? ' required aria-required="true"' : '';
     const lab = `<label for="${id}">${U.esc(f.label)}${f.required ? ' <span class="req" aria-hidden="true">*</span>' : ''}</label>`;
     let input;
+    if (f.type === 'custom') return `<div class="field ${f.full ? 'full' : ''}" data-field="${f.name}">${f.html}<div class="err" aria-live="polite"></div></div>`;
     if (f.type === 'select') {
       input = `<select id="${id}" name="${f.name}"${req}>${f.options.map(([val, lbl]) => `<option value="${U.esc(val)}" ${String(val) === String(v) ? 'selected' : ''}>${U.esc(lbl)}</option>`).join('')}</select>`;
     } else if (f.type === 'textarea') {
@@ -58,7 +59,7 @@
   let modalDirty = false, modalOpen = false;
   UI.isModalOpen = () => modalOpen;
 
-  UI.form = ({ title, subtitle = '', icon = 'edit', fields, extra = '', onSave, validate, onDelete, saveLabel = 'Guardar' }) => {
+  UI.form = ({ title, subtitle = '', icon = 'edit', fields, extra = '', onSave, validate, onDelete, onMount, saveLabel = 'Guardar' }) => {
     const layer = $('dialog');
     modalDirty = false; modalOpen = true;
     layer.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
@@ -73,6 +74,7 @@
     const form = $('editor');
     form.addEventListener('input', () => { modalDirty = true; });
     form.addEventListener('change', () => { modalDirty = true; });
+    if (onMount) onMount(form);
     setTimeout(() => form.querySelector('input:not([type=radio]),select,textarea')?.focus(), 40);
 
     form.onsubmit = e => {
@@ -87,10 +89,10 @@
         else if (f.type === 'date' && v && !U.isDate(v)) errors[f.name] = 'Fecha no válida.';
       });
       Object.assign(errors, validate ? (validate(values) || {}) : {});
-      form.querySelectorAll('.field').forEach(el => { el.classList.remove('has-err'); el.querySelector('.err').textContent = ''; });
+      form.querySelectorAll('.formgrid > .field').forEach(el => { el.classList.remove('has-err'); const m = el.querySelector(':scope > .err'); if (m) m.textContent = ''; });
       const keys = Object.keys(errors);
       if (keys.length) {
-        keys.forEach(k => { const el = form.querySelector(`[data-field="${k}"]`); if (el) { el.classList.add('has-err'); el.querySelector('.err').textContent = errors[k]; } });
+        keys.forEach(k => { const el = form.querySelector(`[data-field="${k}"]`); const m = el?.querySelector(':scope > .err'); if (el) el.classList.add('has-err'); if (m) m.textContent = errors[k]; });
         form.querySelector(`[data-field="${keys[0]}"] input, [data-field="${keys[0]}"] select, [data-field="${keys[0]}"] textarea`)?.focus();
         UI.toast('Revisa los campos marcados antes de guardar.', 'error');
         return;

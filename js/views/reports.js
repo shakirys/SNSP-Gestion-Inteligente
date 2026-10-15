@@ -18,7 +18,7 @@
     },
     projectsCSV() {
       const D = S.data;
-      const rows = [['Proyecto', 'Objetivo / meta', 'Responsable', 'Estado', 'Prioridad', 'Fecha de inicio', 'Fecha meta', 'Actividades', 'Terminadas', 'Vencidas', 'Avance %'], ...D.projects.map(p => { const s = S.stats(p.id); return [p.name, p.goal, p.owner, K.projectStatus[p.status], K.priority[p.priority], p.start, p.target, s.total, s.done, s.late, s.pct]; })];
+      const rows = [['Proyecto', 'Objetivo / meta', 'Responsable', 'Cargo del responsable', 'Estado', 'Prioridad', 'Fecha de inicio', 'Fecha meta', 'Actividades', 'Terminadas', 'Vencidas', 'Avance %'], ...D.projects.map(p => { const s = S.stats(p.id); return [p.name, p.goal, p.owner, S.personRole(p.owner), K.projectStatus[p.status], K.priority[p.priority], p.start, p.target, s.total, s.done, s.late, s.pct]; })];
       U.download('SNSP_Gestion_Proyectos.csv', U.csv(rows), 'text/csv;charset=utf-8');
       UI.toast('Se descargó el CSV de proyectos.');
     },
@@ -46,7 +46,7 @@
     const owners = U.uniq([...tasks.map(t => t.owner), ...ags.map(a => a.owner)]);
     const verb = { create: 'Registro', update: 'Edición', delete: 'Eliminación', import: 'Restauración' };
 
-    const projRows = D.projects.map(p => { const s = S.stats(p.id); return `<tr><td data-label="Proyecto"><strong>${U.esc(p.name)}</strong><small class="muted block">${U.esc(K.projectStatus[p.status])} · prioridad ${U.esc(K.priority[p.priority].toLowerCase())}</small></td><td data-label="Responsable">${U.esc(p.owner)}</td><td class="num" data-label="Actividades">${s.total}</td><td class="num" data-label="Terminadas">${s.done}</td><td class="num" data-label="En curso">${s.open - s.late}</td><td class="num ${s.late ? 't-late' : ''}" data-label="Vencidas">${s.late}</td><td data-label="Avance"><div class="mini-prog">${UI.progress(s.pct)}<b>${s.pct}%</b></div></td></tr>`; }).join('');
+    const projRows = D.projects.map(p => { const s = S.stats(p.id); return `<tr><td data-label="Proyecto"><strong>${U.esc(p.name)}</strong><small class="muted block">${U.esc(K.projectStatus[p.status])} · prioridad ${U.esc(K.priority[p.priority].toLowerCase())}</small></td><td data-label="Responsable">${U.esc(p.owner || 'Sin asignar')}${S.personRole(p.owner) ? `<small class="muted block">${U.esc(S.personRole(p.owner))}</small>` : ''}</td><td class="num" data-label="Actividades">${s.total}</td><td class="num" data-label="Terminadas">${s.done}</td><td class="num" data-label="En curso">${s.open - s.late}</td><td class="num ${s.late ? 't-late' : ''}" data-label="Vencidas">${s.late}</td><td data-label="Avance"><div class="mini-prog">${UI.progress(s.pct)}<b>${s.pct}%</b></div></td></tr>`; }).join('');
 
     const ownerRows = owners.map(o => {
       const t = tasks.filter(x => (x.owner || '') === o), a = ags.filter(x => (x.owner || '') === o);

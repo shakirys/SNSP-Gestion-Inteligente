@@ -2,6 +2,11 @@
 (function () {
   const U = SNSP.util, K = SNSP.catalog, S = SNSP.store, UI = SNSP.ui;
 
+  const ownerHTML = p => {
+    if (!p.owner) return '<span class="muted">Sin asignar</span>';
+    const role = S.personRole(p.owner);
+    return `<span class="owner-name">${U.esc(p.owner)}</span>${role ? `<small class="owner-role">${U.esc(role)}</small>` : ''}`;
+  };
   const pstatus = s => `<span class="pstatus ps-${U.esc(s)}">${U.esc(K.projectStatus[s] || s)}</span>`;
 
   function card(p) {
@@ -15,9 +20,9 @@
       <div class="pcard-progress"><div class="pp-top"><span>Avance</span><b>${s.pct}%</b></div>${UI.progress(s.pct)}
         <div class="pp-counts"><span>${U.plural(s.total, 'actividad', 'actividades')}</span><span class="ok">${s.done} terminadas</span>${s.late ? `<span class="late">${s.late} vencidas</span>` : ''}${s.blocked ? `<span class="blk">${s.blocked} bloqueadas</span>` : ''}</div></div>
       <dl class="pcard-meta">
-        <div><dt>${U.icon('user')}Responsable</dt><dd>${U.esc(p.owner || 'Sin asignar')}</dd></div>
+        <div class="full"><dt>${U.icon('user')}Responsable</dt><dd>${ownerHTML(p)}</dd></div>
         <div><dt>${U.icon('flag')}Fecha meta</dt><dd>${U.esc(targetTxt)}</dd></div>
-        <div class="full"><dt>${U.icon('file')}Próximo entregable</dt><dd>${s.next ? `${U.esc(s.next.name)} <small>· ${U.fmtShort(s.next.due)}</small>` : '<span class="muted">Sin entregables con fecha</span>'}</dd></div>
+        <div><dt>${U.icon('file')}Próximo entregable</dt><dd>${s.next ? `${U.esc(s.next.name)} <small>· ${U.fmtShort(s.next.due)}</small>` : '<span class="muted">Sin entregables con fecha</span>'}</dd></div>
       </dl>
       <footer><button class="btn btn-ghost btn-sm" data-act="goProjectTasks" data-id="${U.esc(p.id)}">${U.icon('tasks')}Ver actividades</button>
         <button class="btn btn-ghost btn-sm" data-act="new" data-entity="task" data-project="${U.esc(p.id)}">${U.icon('plus')}Actividad</button>
@@ -29,7 +34,7 @@
     return `<div class="table-wrap"><table class="table rtable"><thead><tr><th>Proyecto</th><th>Objetivo / meta</th><th>Responsable</th><th>Prioridad</th><th>Fecha meta</th><th>Actividades</th><th>Avance</th><th><span class="sr">Acciones</span></th></tr></thead><tbody>
       ${list.map(p => { const s = S.stats(p.id); return `<tr>
         <td data-label="Proyecto"><strong>${U.esc(p.name)}</strong><div>${pstatus(p.status)}</div></td>
-        <td data-label="Objetivo">${U.esc(p.goal)}</td><td data-label="Responsable">${U.esc(p.owner)}</td>
+        <td data-label="Objetivo">${U.esc(p.goal)}</td><td data-label="Responsable">${ownerHTML(p)}</td>
         <td data-label="Prioridad">${UI.prio(p.priority)}</td><td data-label="Fecha meta" class="nowrap">${U.fmt(p.target)}</td>
         <td data-label="Actividades" class="num">${s.total}</td>
         <td data-label="Avance"><div class="mini-prog">${UI.progress(s.pct)}<b>${s.pct}%</b></div></td>

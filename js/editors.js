@@ -28,6 +28,66 @@
     return n ? `Sus ${U.plural(n, 'registro asociado', 'registros asociados')} (actividades o acuerdos) se conservarán como <em>Sin proyecto</em>. ` : '';
   }
 
+
+  /* ---------------- Campo Responsable con catálogo ---------------- */
+  const NEW = '__nuevo__';
+  function ownerOptions(current) {
+    const key = S.personKey(current);
+    const opt = r => `<option value="${U.esc(r.name)}" ${S.personKey(r.name) === key ? 'selected' : ''}>${U.esc(r.name)}${r.role ? ' · ' + U.esc(r.role) : ''}</option>`;
+    const list = S.people();
+    const persons = list.filter(r => r.kind !== 'team'), teams = list.filter(r => r.kind === 'team');
+    return `<option value="" ${key ? '' : 'selected'}>Sin asignar</option>
+      ${persons.length ? `<optgroup label="Personas">${persons.map(opt).join('')}</optgroup>` : ''}
+      ${teams.length ? `<optgroup label="Equipos">${teams.map(opt).join('')}</optgroup>` : ''}
+      <option value="${NEW}">+ Nuevo responsable</option>`;
+  }
+  function ownerFieldHTML(current) {
+    return `<label for="f_owner">Responsable</label>
+      <select id="f_owner" name="owner">${ownerOptions(current)}</select>
+      <small class="help owner-hint" id="owner-hint"></small>
+      <div class="newperson" id="np" hidden>
+        <p class="np-title">${U.icon('user')}Nuevo responsable</p>
+        <div class="np-grid">
+          <div class="field"><label for="np_name">Nombre completo <span class="req" aria-hidden="true">*</span></label><input id="np_name" type="text" autocomplete="off" placeholder="Ej. Dra. María López Hernández"></div>
+          <div class="field"><label for="np_role">Cargo <span class="muted">(opcional)</span></label><input id="np_role" type="text" autocomplete="off" placeholder="Ej. Analista de datos"></div>
+        </div>
+        <label class="np-team"><input id="np_team" type="checkbox"> Es un equipo o responsable colectivo</label>
+        <div class="err np-err" aria-live="polite"></div>
+        <div class="np-actions"><button type="button" class="btn btn-ghost btn-sm" data-np="cancel">Cancelar</button><button type="button" class="btn btn-primary btn-sm" data-np="add">${U.icon('plus')}Agregar y seleccionar</button></div>
+      </div>`;
+  }
+  function bindOwnerField(form) {
+    const sel = form.querySelector('#f_owner'), np = form.querySelector('#np'), hint = form.querySelector('#owner-hint');
+    const nm = form.querySelector('#np_name'), rl = form.querySelector('#np_role'), tm = form.querySelector('#np_team'), err = form.querySelector('.np-err');
+    let prev = sel.value;
+    const showHint = () => {
+      const p = S.findPerson(sel.value);
+      hint.textContent = p ? (p.role ? `Cargo: ${p.role}` : 'Sin cargo registrado') : sel.value === NEW ? '' : 'El proyecto quedará sin responsable asignado.';
+    };
+    const close = restore => { np.hidden = true; err.textContent = ''; if (restore) sel.value = prev; showHint(); };
+    const add = () => {
+      const name = S.cleanName(nm.value);
+      if (name.length < 3) { err.textContent = 'Escribe el nombre completo del responsable.'; nm.focus(); return; }
+      const { person, existed } = S.addPerson(name, rl.value, tm.checked ? 'team' : 'person');
+      sel.innerHTML = ownerOptions(person.name);
+      prev = sel.value = person.name;
+      close(false);
+      sel.closest('.field').classList.remove('has-err'); sel.closest('.field').querySelector(':scope > .err').textContent = '';
+      UI.toast(existed ? `«${person.name}» ya estaba registrado; quedó seleccionado.` : `Responsable agregado: ${person.name}.`, existed ? 'info' : 'ok');
+      sel.focus();
+    };
+    sel.addEventListener('change', () => {
+      if (sel.value === NEW) { np.hidden = false; nm.value = ''; rl.value = ''; tm.checked = false; err.textContent = ''; hint.textContent = ''; setTimeout(() => nm.focus(), 20); }
+      else { prev = sel.value; close(false); }
+    });
+    np.addEventListener('click', e => { const b = e.target.closest('[data-np]'); if (!b) return; b.dataset.np === 'add' ? add() : (close(true), sel.focus()); });
+    np.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.matches('input[type=text]')) { e.preventDefault(); add(); }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); sel.focus(); }
+    });
+    showHint();
+  }
+
   /* ---------------- Proyecto ---------------- */
   E.project = id => {
     const p = id ? S.find('project', id) : null;
@@ -39,16 +99,26 @@
       fields: [
         { name: 'name', label: 'Nombre', value: v.name, full: true, required: true, placeholder: 'Ej. ASIS por localidad' },
         { name: 'goal', label: 'Objetivo / meta', value: v.goal, type: 'textarea', rows: 2, full: true, required: true },
-        { name: 'owner', label: 'Responsable', value: v.owner, list: 'dl-owners' },
+        { name: 'owner', type: 'custom', full: true, html: ownerFieldHTML(v.owner) },
         { name: 'status', label: 'Estado del proyecto', type: 'select', options: opts(K.projectStatus), value: v.status },
         { name: 'start', label: 'Fecha de inicio', type: 'date', value: v.start },
         { name: 'target', label: 'Fecha meta', type: 'date', value: v.target },
         { name: 'priority', label: 'Prioridad', type: 'segmented', options: opts(K.priority), value: v.priority, full: true }
       ],
-      extra: UI.datalist('dl-owners', S.owners()),
-      validate: x => (x.start && x.target && x.target < x.start) ? { target: 'La fecha meta no puede ser anterior a la fecha de inicio.' } : {},
+      validate: x => {
+        const e = {};
+        if (x.start && x.target && x.target < x.start) e.target = 'La fecha meta no puede ser anterior a la fecha de inicio.';
+        if (x.owner === NEW) e.owner = 'Termina de agregar el nuevo responsable o elige uno de la lista.';
+        return e;
+      },
+      onMount: bindOwnerField,
       onDelete: p ? () => confirmDelete('project', p, deleteNote('project', p)) : null,
-      onSave: vals => { S.upsert('project', id, vals); UI.toast(p ? 'Proyecto actualizado.' : 'Proyecto creado.'); refresh(); }
+      onSave: vals => {
+        const person = S.findPerson(vals.owner);
+        vals.owner = person ? person.name : '';
+        vals.ownerId = person ? person.id : '';
+        S.upsert('project', id, vals); UI.toast(p ? 'Proyecto actualizado.' : 'Proyecto creado.'); refresh();
+      }
     });
   };
 

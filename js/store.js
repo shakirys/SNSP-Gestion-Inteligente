@@ -6,6 +6,7 @@
      tasks:      [{id,name,project,owner,due,status,evidence,detail, +priority,doneAt,area}],
      agreements: [{id,name,context,owner,due,status, +meetingDate,project,notes,area}],
      events:     [{id,name,type,date,time,place,participants,notes,area}]   (nuevo)
+     people:     [{id,name,role,kind}]  catálogo de responsables          (nuevo)
      log:        [{ts,action,entity,id,name}]                              (nuevo)
      meta:       {schemaVersion,area,created,updated}                       (nuevo)
    }
@@ -24,14 +25,24 @@
     { id: 'p6', name: 'Seguimiento PAT 2026', goal: 'Organizar compromisos e indicadores del PAT' }
   ].map(p => ({ ...p, owner: 'Equipo de Inteligencia e Información', target: '', progress: 0 }));
 
-  const seed = () => ({ projects: structuredClone(seedProjects), tasks: [], agreements: [], events: [], log: [], meta: {} });
+  /* Catálogo inicial de responsables. kind: 'person' | 'team' */
+  const defaultPeople = [
+    { id: 'r1', name: 'Mtro. Luis Iván Borja González', role: 'Líder de Inteligencia e Información', kind: 'person' },
+    { id: 'r2', name: 'Ing. Soraya Lizbeth Sánchez Torres', role: 'Enlace de Análisis y Estadística', kind: 'person' },
+    { id: 'r3', name: 'Equipo de Inteligencia e Información', role: 'Responsable colectivo', kind: 'team' }
+  ];
+  /* Nombre limpio (espacios repetidos o en extremos) y llave de comparación sin mayúsculas, acentos ni espacios extra. */
+  const cleanName = s => String(s ?? '').replace(/\s+/g, ' ').trim();
+  const personKey = s => U.norm(cleanName(s)).replace(/\s+/g, '');
+
+  const seed = () => ({ projects: structuredClone(seedProjects), tasks: [], agreements: [], events: [], people: [], log: [], meta: {} });
 
   const fill = (obj, defaults) => { for (const k in defaults) if (obj[k] === undefined || obj[k] === null) obj[k] = defaults[k]; return obj; };
   const str = v => (v === undefined || v === null) ? '' : String(v);
 
   function normalize(d) {
     d = (d && typeof d === 'object') ? d : seed();
-    ['projects', 'tasks', 'agreements', 'events', 'log'].forEach(k => { if (!Array.isArray(d[k])) d[k] = []; });
+    ['projects', 'tasks', 'agreements', 'events', 'people', 'log'].forEach(k => { if (!Array.isArray(d[k])) d[k] = []; });
     d.meta = fill(d.meta && typeof d.meta === 'object' ? d.meta : {}, { area: C.defaultArea, created: new Date().toISOString() });
     d.meta.schemaVersion = C.schemaVersion;
     const valid = (r, p) => { if (!r || typeof r !== 'object') return false; if (!r.id) r.id = U.uid(p); r.id = String(r.id); return true; };
@@ -40,6 +51,15 @@
     d.agreements = d.agreements.filter(r => valid(r, 'a')).map(a => fill(a, { name: '', context: '', owner: '', due: '', status: 'pending', meetingDate: '', project: '', notes: '', area: d.meta.area }));
     d.events = d.events.filter(r => valid(r, 'e')).map(e => fill(e, { name: '', type: 'reunion', date: '', time: '', place: '', participants: '', notes: '', area: d.meta.area }));
     [...d.tasks, ...d.agreements].forEach(x => { if (!SNSP.catalog.status[x.status]) x.status = 'pending'; x.due = str(x.due); });
+    /* Responsables: depura, agrega los predeterminados que falten y registra los responsables
+       que ya tenían los proyectos para que se conserven al editar. */
+    const seen = new Set();
+    d.people = d.people.filter(r => r && typeof r === 'object' && cleanName(r.name)).filter(r => {
+      r.name = cleanName(r.name); const k = personKey(r.name); if (seen.has(k)) return false; seen.add(k);
+      if (!r.id) r.id = U.uid('r'); fill(r, { role: '', kind: 'person' }); return true;
+    });
+    defaultPeople.forEach(dp => { if (!seen.has(personKey(dp.name))) { seen.add(personKey(dp.name)); d.people.push({ ...dp, id: d.people.some(x => x.id === dp.id) ? U.uid('r') : dp.id }); } });
+    d.projects.forEach(p => { const k = personKey(p.owner); if (k && !seen.has(k)) { seen.add(k); d.people.push({ id: U.uid('r'), name: cleanName(p.owner), role: '', kind: 'person' }); } });
     return d;
   }
 
@@ -127,7 +147,25 @@
   }
   const pct = () => U.pct(data.tasks.filter(t => t.status === 'done').length, data.tasks.length);
   const pname = id => data.projects.find(p => p.id === id)?.name || 'Sin proyecto';
-  const owners = () => U.uniq([...data.tasks, ...data.agreements, ...data.projects].map(x => x.owner));
+  const owners = () => U.uniq([...data.people.map(x => x.name), ...data.tasks, ...data.agreements, ...data.projects].map(x => typeof x === 'string' ? x : x.owner));
+
+  /* ---------- Responsables ---------- */
+  const people = () => data.people;
+  const findPerson = name => { const k = personKey(name); return k ? data.people.find(p => personKey(p.name) === k) || null : null; };
+  const personRole = name => findPerson(name)?.role || '';
+  /* Agrega un responsable sin duplicar. Devuelve { person, existed }. */
+  function addPerson(name, role = '', kind = 'person') {
+    name = cleanName(name); role = cleanName(role);
+    const found = findPerson(name);
+    if (found) {
+      if (role && !found.role) { found.role = role; save(); }
+      return { person: found, existed: true };
+    }
+    const person = { id: U.uid('r'), name, role, kind, created: new Date().toISOString() };
+    data.people.push(person);
+    log('create', 'person', person); save();
+    return { person, existed: false };
+  }
   const contexts = () => U.uniq([...data.agreements.map(a => a.context), ...data.events.map(e => e.name)]);
 
   /* Compromisos con fecha: actividades, acuerdos, reuniones y fechas meta de proyecto. */
@@ -181,7 +219,7 @@
 
   SNSP.store = {
     load, save, normalize, upsert, setStatus, remove, find, validateBackup, replaceAll,
-    stats, pct, pname, owners, contexts, itemsOn, addDemo, removeDemo, hasDemo,
+    stats, pct, pname, owners, contexts, people, findPerson, personRole, addPerson, cleanName, personKey, itemsOn, addDemo, removeDemo, hasDemo,
     get data() { return data; },
     get storageOK() { return storageOK; },
     get lastSaved() { return lastSaved; }

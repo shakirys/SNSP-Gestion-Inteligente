@@ -6,7 +6,7 @@ window.SNSP = window.SNSP || {};
 
 SNSP.config = {
   appName: 'SNSP Gestión Inteligente',
-  version: '2.0',
+  version: '2.1',
   unit: 'Inteligencia e Información',
   place: 'Querétaro',
   /* Clave de almacenamiento: se conserva la de la V1 para no perder datos. */
@@ -38,7 +38,7 @@ SNSP.catalog = {
     done: 'Cumplida',
     none: 'Sin fecha'
   },
-  entity: { project: 'Proyecto', task: 'Actividad', agreement: 'Acuerdo', event: 'Reunión', data: 'Datos' }
+  entity: { project: 'Proyecto', task: 'Actividad', agreement: 'Acuerdo', event: 'Reunión', person: 'Responsable', data: 'Datos' }
 };
 
 /* Menú lateral. Para agregar un módulo: registrar aquí y en SNSP.views. */
